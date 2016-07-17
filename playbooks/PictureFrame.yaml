@@ -1,0 +1,242 @@
+---
+- name: Configure picture frame Raspberry Pi with feh
+  hosts: pframes
+  become_user: root
+  become: True
+  become_method: sudo
+  tasks:
+
+  # Print out debug info.
+    #- name: print ansible_local
+    #  debug: var=ansible_local
+    #- name: print inventory hostname
+    #  debug: var=inventory_hostname
+    #- shell: hostname
+
+
+#    - name: copy index.html
+#      template: >
+#        src=templates/index.html.j2
+#        dest=/usr/share/nginx/html/index.html
+#        mode=0644
+
+    #- name: set IP address
+
+    #- name: set time server
+
+    #- name: set timed
+
+    #- name: set time zone
+    - name: Set timezone variables
+      copy: >
+            src=files/timezone
+            dest=/etc/timezone
+            owner=root
+            group=root
+            mode=0644
+            backup=no
+      notify:
+        - update timezone
+
+    - name: install feh (photo slideshow software)
+      apt: >
+        name=feh
+        update_cache=yes
+        cache_valid_time=36720
+
+    - name: install matchbox-keyboard
+      apt: >
+        name=matchbox-keyboard
+        state=present
+
+    - name: install florence
+      apt: >
+        name=florence
+        state=present
+
+    - name: uninstall wolfram
+      apt: >
+        name=wolfram-engine
+        state=absent
+
+    - name: copy the correct config file to the correct machine
+      copy: >
+        src=files/config.txt.{{ inventory_hostname }}
+        dest=/boot/config.txt
+        owner=root
+        group=root
+        backup=no
+      notify: reboot frame
+
+    - name: create the 'frame' user
+      user: >
+        name=frame
+        generate_ssh_key=yes
+
+
+    - name: configure hostname to inventory_hostname
+      hostname: name={{ inventory_hostname }}
+
+    #- set machine name in the /etc/hosts file
+
+    - name: create frame user's Desktop directory
+      file: >
+        path=/home/frame/Desktop/
+        state=directory
+        owner=frame
+        group=frame
+        recurse=yes
+        mode=0755
+
+    - name: copy the icon file to the frame user
+      copy: >
+        src=files/Slideshow.desktop
+        dest=/home/frame/Desktop/Slideshow.desktop
+        owner=frame
+        group=frame
+        backup=no
+
+    - name: copy the florence keyboard icon file to the frame user
+      copy: >
+        src=files/Florence.desktop
+        dest=/home/frame/Desktop/Florence.desktop
+        owner=frame
+        group=frame
+        backup=no
+
+    - name: Change autologin user to 'frame'
+      copy: >
+        src=files/lightdm.conf
+        dest=/etc/lightdm/lightdm.conf
+        owner=root
+        group=root
+        mode=0644
+        backup=no
+
+    - name: create the bin directory for the frame user
+      file: >
+        path=/home/frame/bin/
+        state=directory
+        owner=frame
+        group=frame
+        recurse=yes
+        mode=0755
+
+    - name: copy the feh startup script into place
+      copy: >
+        src=files/start_slide_show.sh
+        dest=/home/frame/bin/start_slide_show.sh
+        owner=frame
+        group=frame
+        mode=0755
+        backup=no
+
+    - name: create the autostart of the feh (slideshow) program for the frame user
+      file: >
+        path=/home/frame/.config/autostart/
+        state=directory
+        owner=frame
+        group=frame
+        recurse=yes
+        mode=0755
+
+    - name: setup feh startup script to run at login (boot)
+      file: >
+        dest=/home/frame/.config/autostart/Slideshow.desktop
+        src=/home/frame/Desktop/Slideshow.desktop
+        state=link
+
+    - name: setup florence keyboard startup script to run at login (boot)
+      file: >
+        dest=/home/frame/.config/autostart/Florence.desktop
+        src=/home/frame/Desktop/Florence.desktop
+        state=link
+
+    # setup the touch screen calibration
+    - name: setup touch screeen calibration
+      copy: >
+        src=files/evdev.conf.{{ inventory_hostname }}
+        dest=/usr/share/X11/xorg.conf.d/10-evdev.conf
+        owner=root
+        group=root
+        mode=0644
+        backup=no
+
+    # setup cron scripts for auto sync from server, and turning the screen on and off when having it running is not desired
+    - name: copy the correct rsync script into place
+      copy: >
+        src=files/picture_sync.sh.{{ inventory_hostname }}
+        dest=/home/frame/bin/picture_sync.sh
+        owner=frame
+        group=frame
+        mode=0754
+        backup=no
+
+#    # Two part startup so it's working when I wakeup.
+#    - name: setup cron script to turn on the screen at wake up 04:29
+#      cron: >
+#        name="wake up"
+#        weekday="*"
+#        hour=5
+#        minute=14
+#        user="root"
+#        job="/opt/vc/bin/tvservice -p && chvt 1 && chvt 7"
+#
+#    - name: setup cron script to turn off the screensaver at wake up 04:30
+#      cron: >
+#        name="morning photo sync"
+#        weekday="*"
+#        hour=5
+#        minute=15
+#        user="frame"
+#        job="bin/picture_sync.sh"
+#
+#    # Cron script that turns off the frame screen when we go to work
+#    - name: setup cron script to turn off the screen at work time M-F 07:30
+#      cron: >
+#        name="go to work"
+#        weekday="1,2,3,4,5"
+#        hour=6
+#        minute=30
+#        user="root"
+#        job="/opt/vc/bin/tvservice -p && /opt/vc/bin/tvservice -o"
+#
+#    # Two part Cron entry to turn the screen on and set screen blanker off
+#    #   so it is working when we come home from work.
+#    - name: setup cron script to turn on the screen at come home M-F 16:30
+#      cron: >
+#        name="come home"
+#        weekday="1,2,3,4,5"
+#        hour=17
+#        minute=49
+#        user="root"
+#        job="/opt/vc/bin/tvservice -p && chvt 1 && chvt 7"
+#
+#    - name: setup cron script to sync at come home M-F 16:30
+#      cron: >
+#        name="homecoming photo sync"
+#        weekday="*"
+#        hour=17
+#        minute=50
+#        user="frame"
+#        job="bin/picture_sync.sh"
+#
+#    # Cron script to turn off screens at bedtime
+#    - name: setup cron script to turn off the screen at bedtime 21:00
+#      cron: >
+#        name="bedtime"
+#        weekday="*"
+#        hour=19
+#        minute=30
+#        user="root"
+#        job="/opt/vc/bin/tvservice -p && /opt/vc/bin/tvservice -o"
+
+  handlers:
+    - name: reboot frame
+      command: shutdown -r now "Ansible updates triggered"
+      async: 0
+      poll: 0
+      ignore_errors: true
+
+    - name: update timezone
+      command: dpkg-reconfigure --frontend noninteractive tzdata

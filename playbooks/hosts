@@ -1,0 +1,5 @@
+[pframes]
+# landscape picture frame
+framel ansible_ssh_host=10.0.1.39
+# portrait picture frame
+framep ansible_ssh_host=10.0.1.41

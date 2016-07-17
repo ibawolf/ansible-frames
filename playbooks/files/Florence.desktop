@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Keyboard
+Comment=Florence virtual keyboard
+Icon=/usr/share/pixmaps/sc_ide.svg
+Exec=florence
+Type=Application
+Encoding=UTF-8
+Terminal=false
+Categories=None;

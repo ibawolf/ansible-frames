@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Slideshow
+Comment=Slideshow Photo Viewer
+Icon=/usr/share/pixmaps/sc_ide.svg
+Exec=/home/frame/bin/start_slide_show.sh
+Type=Application
+Encoding=UTF-8
+Terminal=false
+Categories=None;
